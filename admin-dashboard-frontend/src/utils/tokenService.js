@@ -1,9 +1,7 @@
-import Cookies from "js-cookie";
-
-const ACCESS_TOKEN_KEY = "token";
 const REFRESH_TOKEN_KEY = "refreshToken";
 const RESET_TOKEN_KEY = "resetToken";
 const AUTH_DEVICE_KEY = "authDevice";
+const LEGACY_ACCESS_TOKEN_KEY = "token";
 
 const DEFAULT_AUTH_DEVICE =
   import.meta?.env?.VITE_AUTH_DEVICE?.trim() || "admin";
@@ -18,32 +16,9 @@ const reportStorageIssue = (operation, error) => {
   }
 };
 
-const purgeLegacyAccessTokens = () => {
-  for (const storage of [sessionStorage, localStorage]) {
-    try {
-      storage.removeItem(ACCESS_TOKEN_KEY);
-    } catch (error) {
-      reportStorageIssue("purge legacy access token", error);
-    }
-  }
-};
-
-const purgeLegacyLocalData = () => {
-  try {
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(AUTH_DEVICE_KEY);
-    localStorage.removeItem(RESET_TOKEN_KEY);
-  } catch (error) {
-    reportStorageIssue("purge legacy local data", error);
-  }
-};
-
-purgeLegacyAccessTokens();
-purgeLegacyLocalData();
-
 const readItem = (key) => {
   try {
-    return Cookies.get(key) || null;
+    return sessionStorage.getItem(key) || null;
   } catch (error) {
     reportStorageIssue(`read ${key}`, error);
     return null;
@@ -52,7 +27,7 @@ const readItem = (key) => {
 
 const writeItem = (key, value) => {
   try {
-    Cookies.set(key, value, { expires: 30, secure: window.location.protocol === "https:", sameSite: 'lax' });
+    sessionStorage.setItem(key, value);
   } catch (error) {
     reportStorageIssue(`write ${key}`, error);
   }
@@ -60,9 +35,19 @@ const writeItem = (key, value) => {
 
 const removeItem = (key) => {
   try {
-    Cookies.remove(key);
+    sessionStorage.removeItem(key);
   } catch (error) {
     reportStorageIssue(`remove ${key}`, error);
+  }
+};
+
+const purgeLegacyAccessTokens = () => {
+  for (const storage of [sessionStorage, localStorage]) {
+    try {
+      storage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+    } catch (error) {
+      reportStorageIssue("purge legacy access token", error);
+    }
   }
 };
 
@@ -70,9 +55,10 @@ const emitAuthChange = (type) => {
   if (typeof window === "undefined") {
     return;
   }
-
   window.dispatchEvent(new CustomEvent("auth:changed", { detail: { type } }));
 };
+
+purgeLegacyAccessTokens();
 
 export function getAuthToken() {
   return accessToken;
@@ -162,12 +148,13 @@ export function clearAuthToken() {
   removeItem(REFRESH_TOKEN_KEY);
   removeItem(AUTH_DEVICE_KEY);
   purgeLegacyAccessTokens();
-  purgeLegacyLocalData();
+
   try {
     localStorage.removeItem("hasSession");
   } catch (error) {
     reportStorageIssue("remove hasSession", error);
   }
+
   emitAuthChange("token-cleared");
 }
 
