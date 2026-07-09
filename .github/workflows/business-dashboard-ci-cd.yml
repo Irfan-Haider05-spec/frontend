@@ -1,0 +1,46 @@
+name: Business Dashboard CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "business-dashboard-frontend/**"
+  push:
+    branches: [main, develop]
+    paths:
+      - "business-dashboard-frontend/**"
+
+defaults:
+  run:
+    working-directory: business-dashboard-frontend
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: business-dashboard-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      - name: Type Check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+        continue-on-error: true

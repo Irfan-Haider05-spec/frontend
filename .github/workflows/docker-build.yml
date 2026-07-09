@@ -1,0 +1,77 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-admin-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Downcase REPO
+        id: downcase
+        run: echo "repo=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Admin Dashboard Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./admin-dashboard-frontend
+          file: ./admin-dashboard-frontend/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ steps.downcase.outputs.repo }}/admin-dashboard-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-business-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Downcase REPO
+        id: downcase
+        run: echo "repo=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Business Dashboard Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./business-dashboard-frontend
+          file: ./business-dashboard-frontend/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ steps.downcase.outputs.repo }}/business-dashboard-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
